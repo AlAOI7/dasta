@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>نظام إدارة بيانات الاشتراكات - نموذج إدخال وجدول</title>
+  <!-- XLSX لقراءة وكتابة Excel -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #eef2f8;
+      font-family: 'Cairo', sans-serif;
+      padding: 2rem 1.5rem;
+      color: #1e2a3e;
+    }
+
+    /* الحاوية الرئيسية */
+    .app-wrapper {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 2rem;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      padding: 1.8rem 2rem;
+    }
+
+    /* نموذج الإدخال (فورم) */
+    .form-section {
+      background: #f9fbfe;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2edf2;
+      box-shadow: 0 5px 12px rgba(0, 0, 0, 0.03);
+    }
+    .form-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1f5e3a;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-right: 4px solid #2c7a4d;
+      padding-right: 15px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #2c5a3a;
+    }
+    .input-group input, .input-group select {
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 1rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: 0.85rem;
+      background: white;
+      transition: 0.2s;
+    }
+    .input-group input:focus, .input-group select:focus {
+      border-color: #2c7a4d;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(44,122,77,0.15);
+    }
+    .btn-add {
+      background: #2c7a4d;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.8rem;
+      border-radius: 2.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-add:hover {
+      background: #1f5e3a;
+      transform: translateY(-2px);
+    }
+
+    /* شريط الأدوات والبحث */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .btn-icon {
+      background: white;
+      border: 1px solid #cbd5e1;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-icon:hover {
+      background: #eef2f5;
+      border-color: #2c7a4d;
+    }
+    .search-box {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 2rem;
+      padding: 0.4rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .search-box i {
+      color: #7f8c9a;
+    }
+    .search-box input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0.6rem 0;
+      font-family: 'Cairo', sans-serif;
+      outline: none;
+    }
+    .badge-count {
+      background: #e0f2e9;
+      padding: 0.2rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* الجدول */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 1.25rem;
+      border: 1px solid #ecf3f0;
+      background: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      min-width: 1280px;
+    }
+    th {
+      background: #f0f6f2;
+      padding: 0.9rem 0.6rem;
+      font-weight: 700;
+      color: #1f543a;
+      border-bottom: 2px solid #dcebe3;
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.7rem 0.6rem;
+      border-bottom: 1px solid #ecf3f0;
+    }
+    .empty-row td {
+      text-align: center;
+      padding: 2rem;
+      color: #8ba0b0;
+    }
+    .delete-btn {
+      color: #c0392b;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1rem;
+    }
+    .delete-btn:hover {
+      color: #e74c3c;
+    }
+    /* رسالة منبثقة */
+    .toast-msg {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #1e2a3a;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 40px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 1100;
+      font-size: 0.85rem;
+    }
+    @media (max-width: 700px) {
+      body { padding: 1rem; }
+      .app-wrapper { padding: 1rem; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- نموذج إدخال البيانات -->
+  <div class="form-section">
+    <div class="form-title"><i class="fas fa-edit"></i> إضافة بيانات جديدة (نموذج الإدخال)</div>
+    <div class="form-grid">
+      <div class="input-group"><label>رقم استمارة الاشتراك</label><input type="text" id="formNumber" placeholder="مثال: 001"></div>
+      <div class="input-group"><label>الاسم الأول</label><input type="text" id="firstName"></div>
+      <div class="input-group"><label>الأب</label><input type="text" id="fatherName"></div>
+      <div class="input-group"><label>الجد</label><input type="text" id="grandName"></div>
+      <div class="input-group"><label>اللقب</label><input type="text" id="lastName"></div>
+      <div class="input-group"><label>الجنس</label><select id="gender"><option value="">--</option><option>ذكر</option><option>أنثى</option></select></div>
+      <div class="input-group"><label>رقم الحساب البنكي (كاك بنك)</label><input type="text" id="bankAccount"></div>
+      <div class="input-group"><label>رقم الجوال الرئيسي</label><input type="text" id="primaryPhone"></div>
+      <div class="input-group"><label>رقم الجوال البديل</label><input type="text" id="secondaryPhone"></div>
+      <div class="input-group"><label>الوظيفه</label><input type="text" id="job"></div>
+      <div class="input-group"><label>المحافظة</label><input type="text" id="governorate"></div>
+      <div class="input-group"><label>المديريه</label><input type="text" id="district"></div>
+      <div class="input-group"><label>الرقم الوطني</label><input type="text" id="nationalId"></div>
+      <div class="input-group"><label>تاريخ الاصدار</label><input type="text" id="issueDate" placeholder="YYYY-MM-DD"></div>
+      <div class="input-group"><label>تاريخ الانتهاء</label><input type="text" id="expiryDate"></div>
+      <div class="input-group"><label>تاريخ الميلاد</label><input type="text" id="birthDate"></div>
+      <div class="input-group"><label>ملاحظه</label><input type="text" id="notes"></div>
+    </div>
+    <button class="btn-add" id="addBtn"><i class="fas fa-plus-circle"></i> إضافة سجل إلى الجدول</button>
+  </div>
+
+  <!-- الأدوات: استيراد / تصدير / بحث -->
+  <div class="toolbar">
+    <div style="display: flex; gap: 10px;">
+      <label class="btn-icon" style="cursor:pointer;"><i class="fas fa-file-import"></i> استيراد Excel <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" hidden></label>
+      <button class="btn-icon" id="exportExcelBtn"><i class="fas fa-file-export"></i> تصدير Excel</button>
+    </div>
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input type="text" id="searchInput" placeholder="بحث في جميع الحقول...">
+    </div>
+    <div class="badge-count" id="recordsCount">0 سجل</div>
+  </div>
+
+  <!-- الجدول لعرض البيانات -->
+  <div class="table-wrapper">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>رقم استمارة الاشتراك</th><th>الاسم الأول</th><th>الأب</th><th>الجد</th><th>اللقب</th>
+          <th>الجنس</th><th>رقم الحساب البنكي (كاك بنك)</th><th>رقم الجوال الرئيسي</th><th>رقم الجوال البديل</th>
+          <th>الوظيفه</th><th>المحافظة</th><th>المديريه</th><th>الرقم الوطني</th>
+          <th>تاريخ الاصدار</th><th>تاريخ الانتهاء</th><th>تاريخ الميلاد</th><th>ملاحظه</th><th>حذف</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="empty-row"><td colspan="18" style="text-align:center;">📋 لا توجد بيانات. أضف سجلاً عبر النموذج أو استورد ملف Excel</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div id="toastMsg" class="toast-msg"><i class="fas fa-info-circle"></i> <span></span></div>
+
+<script>
+  // تخزين جميع البيانات
+  let records = [];
+
+  // دالة عرض الإشعارات
+  function showMessage(text, isError = false) {
+    const toast = document.getElementById('toastMsg');
+    toast.querySelector('span').innerText = text;
+    toast.style.display = 'flex';
+    if(isError) {
+      toast.style.background = '#b91c1c';
+      toast.querySelector('i').className = 'fas fa-exclamation-triangle';
+    } else {
+      toast.style.background = '#1f6e43';
+      toast.querySelector('i').className = 'fas fa-check-circle';
+    }
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 2800);
+  }
+
+  // دالة هروب النص
+  function escapeHtml(str) {
+    if(str === undefined || str === null) return '—';
+    return String(str).replace(/[&<>]/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  // عرض الجدول بناءً على records الحالي (مع مراعاة البحث)
+  let currentFilter = '';
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    let filtered = records;
+    if(currentFilter.trim() !== '') {
+      const term = currentFilter.trim().toLowerCase();
+      filtered = records.filter(rec => {
+        const allValues = [
+          rec.formNumber, rec.firstName, rec.fatherName, rec.grandName, rec.lastName,
+          rec.gender, rec.bankAccount, rec.primaryPhone, rec.secondaryPhone, rec.job,
+          rec.governorate, rec.district, rec.nationalId, rec.issueDate, rec.expiryDate,
+          rec.birthDate, rec.notes
+        ].join(' ').toLowerCase();
+        return allValues.includes(term);
+      });
+    }
+    if(filtered.length === 0) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="18">🚫 لا توجد بيانات تطابق البحث، أضف سجلاً جديداً.</td></tr>`;
+      document.getElementById('recordsCount').innerText = `0 سجل`;
+      return;
+    }
+    let html = '';
+    for(let i = 0; i < filtered.length; i++) {
+      const r = filtered[i];
+      // نحتاج إلى الرقم الأصلي في records لحذفه
+      const originalIndex = records.findIndex(orig => orig.id === r.id);
+      html += `<tr>
+        <td>${escapeHtml(r.formNumber)}</td>
+        <td>${escapeHtml(r.firstName)}</td>
+        <td>${escapeHtml(r.fatherName)}</td>
+        <td>${escapeHtml(r.grandName)}</td>
+        <td>${escapeHtml(r.lastName)}</td>
+        <td>${escapeHtml(r.gender)}</td>
+        <td>${escapeHtml(r.bankAccount)}</td>
+        <td>${escapeHtml(r.primaryPhone)}</td>
+        <td>${escapeHtml(r.secondaryPhone)}</td>
+        <td>${escapeHtml(r.job)}</td>
+        <td>${escapeHtml(r.governorate)}</td>
+        <td>${escapeHtml(r.district)}</td>
+        <td>${escapeHtml(r.nationalId)}</td>
+        <td>${escapeHtml(r.issueDate)}</td>
+        <td>${escapeHtml(r.expiryDate)}</td>
+        <td>${escapeHtml(r.birthDate)}</td>
+        <td>${escapeHtml(r.notes)}</td>
+        <td><button class="delete-btn" data-id="${r.id}"><i class="fas fa-trash-alt"></i></button></td>
+      </tr>`;
+    }
+    tbody.innerHTML = html;
+    document.getElementById('recordsCount').innerText = `${filtered.length} سجل`;
+    // ربط أزرار الحذف
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(btn.getAttribute('data-id'));
+        records = records.filter(rec => rec.id !== id);
+        renderTable();
+        showMessage('تم حذف السجل بنجاح');
+      });
+    });
+  }
+
+  // إضافة سجل جديد من النموذج
+  function addRecordFromForm() {
+    const getVal = (id) => document.getElementById(id).value.trim();
+    const newRecord = {
+      id: Date.now(),
+      formNumber: getVal('formNumber'),
+      firstName: getVal('firstName'),
+      fatherName: getVal('fatherName'),
+      grandName: getVal('grandName'),
+      lastName: getVal('lastName'),
+      gender: getVal('gender'),
+      bankAccount: getVal('bankAccount'),
+      primaryPhone: getVal('primaryPhone'),
+      secondaryPhone: getVal('secondaryPhone'),
+      job: getVal('job'),
+      governorate: getVal('governorate'),
+      district: getVal('district'),
+      nationalId: getVal('nationalId'),
+      issueDate: getVal('issueDate'),
+      expiryDate: getVal('expiryDate'),
+      birthDate: getVal('birthDate'),
+      notes: getVal('notes')
+    };
+    // تحقق بسيط: يمكن إضافة شرط لكن ليس إجبارياً
+    records.push(newRecord);
+    // إعادة تعيين الحقول
+    document.querySelectorAll('.form-grid input, .form-grid select').forEach(field => {
+      if(field.type !== 'select-one') field.value = '';
+      else field.selectedIndex = 0;
+    });
+    renderTable();
+    showMessage('✅ تم إضافة السجل بنجاح');
+  }
+
+  // استيراد ملف Excel
+  function importExcel(file) {
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const dataArr = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(dataArr, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        if(!rows.length) {
+          showMessage('⚠️ الملف فارغ', true);
+          return;
+        }
+        const importedRecords = rows.map((row, idx) => ({
+          id: Date.now() + idx,
+          formNumber: row['رقم استمارة الاشتراك'] || row['رقم الاستمارة'] || '',
+          firstName: row['الاسم الأول'] || row['الاسم الاول'] || '',
+          fatherName: row['الأب'] || row['الاب'] || '',
+          grandName: row['الجد'] || '',
+          lastName: row['اللقب'] || row['اسم العائلة'] || '',
+          gender: row['الجنس'] || '',
+          bankAccount: row['رقم الحساب البنكي (كاك بنك)'] || row['رقم الحساب البنكي'] || '',
+          primaryPhone: row['رقم الجوال الرئيسي'] || row['رقم الجوال الرئيسي المراد استخدامها للحساب'] || row['الجوال الرئيسي'] || '',
+          secondaryPhone: row['رقم الجوال البديل'] || row['الجوال البديل'] || '',
+          job: row['الوظيفه'] || row['الوظيفة'] || '',
+          governorate: row['المحافظة'] || '',
+          district: row['المديريه'] || row['المديرية'] || '',
+          nationalId: row['الرقم الوطني'] || '',
+          issueDate: row['تاريخ الاصدار'] || row['تاريخ الإصدار'] || '',
+          expiryDate: row['تاريخ الانتهاء'] || '',
+          birthDate: row['تاريخ الميلاد'] || '',
+          notes: row['ملاحظه'] || row['ملاحظة'] || ''
+        }));
+        records.push(...importedRecords);
+        renderTable();
+        showMessage(`تم استيراد ${importedRecords.length} سجل بنجاح`);
+      } catch(err) {
+        showMessage('خطأ في قراءة الملف', true);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // تصدير البيانات إلى Excel (بنفس ترتيب الأعمدة المطلوب)
+  function exportToExcel() {
+    if(records.length === 0) {
+      showMessage('لا توجد بيانات للتصدير', true);
+      return;
+    }
+    const exportData = records.map(rec => ({
+      'رقم استمارة الاشتراك': rec.formNumber,
+      'الاسم الأول': rec.firstName,
+      'الأب': rec.fatherName,
+      'الجد': rec.grandName,
+      'اللقب': rec.lastName,
+      'الجنس': rec.gender,
+      'رقم الحساب البنكي (كاك بنك)': rec.bankAccount,
+      'رقم الجوال الرئيسي': rec.primaryPhone,
+      'رقم الجوال البديل': rec.secondaryPhone,
+      'الوظيفه': rec.job,
+      'المحافظة': rec.governorate,
+      'المديريه': rec.district,
+      'الرقم الوطني': rec.nationalId,
+      'تاريخ الاصدار': rec.issueDate,
+      'تاريخ الانتهاء': rec.expiryDate,
+      'تاريخ الميلاد': rec.birthDate,
+      'ملاحظه': rec.notes
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    ws['!cols'] = [{wch:18},{wch:12},{wch:12},{wch:12},{wch:12},{wch:8},{wch:22},{wch:16},{wch:16},{wch:14},{wch:14},{wch:14},{wch:16},{wch:14},{wch:14},{wch:14},{wch:20}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'البيانات');
+    XLSX.writeFile(wb, `بيانات_الاشتراكات_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
+    showMessage(`تم تصدير ${records.length} سجل بنجاح`);
+  }
+
+  // أحداث الصفحة
+  document.getElementById('addBtn').addEventListener('click', addRecordFromForm);
+  document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+  const fileInput = document.getElementById('excelFileInput');
+  fileInput.addEventListener('change', (e) => {
+    if(e.target.files.length) importExcel(e.target.files[0]);
+    fileInput.value = '';
+  });
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', (e) => {
+    currentFilter = e.target.value;
+    renderTable();
+  });
+  // سحب وإفلات الملف على الواجهة
+  const appDiv = document.querySelector('.app-wrapper');
+  appDiv.addEventListener('dragover', (e) => e.preventDefault());
+  appDiv.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if(file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
+      importExcel(file);
+    } else if(file) showMessage('يرجى إفلات ملف Excel فقط', true);
+  });
+
+  // رسالة ترحيب
+  showMessage('جاهز للإضافة. يمكنك إدخال البيانات يدوياً أو استيراد ملف Excel', false);
+</script>
+</body>
+</html>
