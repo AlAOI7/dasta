@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>نظام إدارة بيانات الاشتراكات - تصدير مضمون</title>
+  <!-- محاولة تحميل XLSX من CDN مع استخدام نسخة محلية احتياطية -->
+  <script>
+    // متغير للتأكد من تحميل المكتبة
+    window.XLSX_LOADED = false;
+    
+    // دالة لتحميل المكتبة من مصادر متعددة
+    function loadXLSX(callback) {
+      // محاولة من CDN أولاً
+      const script = document.createElement('script');
+      script.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+      script.onload = function() {
+        window.XLSX_LOADED = true;
+        console.log('تم تحميل XLSX من CDN');
+        if(callback) callback(true);
+      };
+      script.onerror = function() {
+        console.log('فشل تحميل XLSX من CDN، جاري استخدام الطريقة المضمنة');
+        // استخدام طريقة التصدير المضمنة (CSV/HTML)
+        window.XLSX_LOADED = false;
+        if(callback) callback(false);
+      };
+      document.head.appendChild(script);
+      
+      // مهلة 5 ثواني
+      setTimeout(function() {
+        if(!window.XLSX_LOADED && callback) {
+          callback(false);
+        }
+      }, 5000);
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #eef2f8;
+      font-family: 'Cairo', sans-serif;
+      padding: 2rem 1.5rem;
+      color: #1e2a3e;
+    }
+
+    .app-wrapper {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 2rem;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      padding: 1.8rem 2rem;
+    }
+
+    .form-section {
+      background: #f9fbfe;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2edf2;
+      box-shadow: 0 5px 12px rgba(0, 0, 0, 0.03);
+    }
+    .form-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1f5e3a;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-right: 4px solid #2c7a4d;
+      padding-right: 15px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #2c5a3a;
+    }
+    .input-group input, .input-group select {
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 1rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: 0.85rem;
+      background: white;
+      transition: 0.2s;
+    }
+    .input-group input:focus, .input-group select:focus {
+      border-color: #2c7a4d;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(44,122,77,0.15);
+    }
+    .btn-add {
+      background: #2c7a4d;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.8rem;
+      border-radius: 2.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-add:hover {
+      background: #1f5e3a;
+      transform: translateY(-2px);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .btn-icon {
+      background: white;
+      border: 1px solid #cbd5e1;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-icon:hover {
+      background: #eef2f5;
+      border-color: #2c7a4d;
+    }
+    .search-box {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 2rem;
+      padding: 0.4rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .search-box i {
+      color: #7f8c9a;
+    }
+    .search-box input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0.6rem 0;
+      font-family: 'Cairo', sans-serif;
+      outline: none;
+    }
+    .badge-count {
+      background: #e0f2e9;
+      padding: 0.2rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .clear-storage {
+      background: #dc2626;
+      color: white;
+      border: none;
+    }
+    .clear-storage:hover {
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+    .export-options {
+      position: relative;
+      display: inline-block;
+    }
+    .export-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 1rem;
+      margin-top: 5px;
+      z-index: 100;
+      min-width: 180px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .export-dropdown button {
+      display: block;
+      width: 100%;
+      padding: 8px 15px;
+      text-align: right;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Cairo', sans-serif;
+      border-radius: 0.8rem;
+    }
+    .export-dropdown button:hover {
+      background: #eef2f5;
+    }
+    .export-options:hover .export-dropdown {
+      display: block;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 1.25rem;
+      border: 1px solid #ecf3f0;
+      background: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      min-width: 1280px;
+    }
+    th {
+      background: #f0f6f2;
+      padding: 0.9rem 0.6rem;
+      font-weight: 700;
+      color: #1f543a;
+      border-bottom: 2px solid #dcebe3;
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.7rem 0.6rem;
+      border-bottom: 1px solid #ecf3f0;
+    }
+    .empty-row td {
+      text-align: center;
+      padding: 2rem;
+      color: #8ba0b0;
+    }
+    .delete-btn {
+      color: #c0392b;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: 0.2s;
+    }
+    .delete-btn:hover {
+      color: #e74c3c;
+      background: #fee2e2;
+      transform: scale(1.05);
+    }
+    .toast-msg {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #1e2a3a;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 40px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 1100;
+      font-size: 0.85rem;
+    }
+    @media (max-width: 700px) {
+      body { padding: 1rem; }
+      .app-wrapper { padding: 1rem; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <div class="form-section">
+    <div class="form-title"><i class="fas fa-edit"></i> إضافة بيانات جديدة</div>
+    <div class="form-grid">
+      <div class="input-group"><label>رقم استمارة الاشتراك</label><input type="text" id="formNumber" placeholder="مثال: 001"></div>
+      <div class="input-group"><label>الاسم الأول</label><input type="text" id="firstName"></div>
+      <div class="input-group"><label>الأب</label><input type="text" id="fatherName"></div>
+      <div class="input-group"><label>الجد</label><input type="text" id="grandName"></div>
+      <div class="input-group"><label>اللقب</label><input type="text" id="lastName"></div>
+      <div class="input-group"><label>الجنس</label><select id="gender"><option value="">--</option><option>ذكر</option><option>أنثى</option></select></div>
+      <div class="input-group"><label>رقم الحساب البنكي (كاك بنك)</label><input type="text" id="bankAccount"></div>
+      <div class="input-group"><label>رقم الجوال الرئيسي</label><input type="text" id="primaryPhone"></div>
+      <div class="input-group"><label>رقم الجوال البديل</label><input type="text" id="secondaryPhone"></div>
+      <div class="input-group"><label>الوظيفه</label><input type="text" id="job"></div>
+      <div class="input-group"><label>المحافظة</label><input type="text" id="governorate"></div>
+      <div class="input-group"><label>المديريه</label><input type="text" id="district"></div>
+      <div class="input-group"><label>الرقم الوطني</label><input type="text" id="nationalId"></div>
+      <div class="input-group"><label>تاريخ الاصدار</label><input type="text" id="issueDate" placeholder="YYYY-MM-DD"></div>
+      <div class="input-group"><label>تاريخ الانتهاء</label><input type="text" id="expiryDate" placeholder="YYYY-MM-DD"></div>
+      <div class="input-group"><label>تاريخ الميلاد</label><input type="text" id="birthDate" placeholder="YYYY-MM-DD"></div>
+      <div class="input-group"><label>ملاحظه</label><input type="text" id="notes"></div>
+    </div>
+    <button class="btn-add" id="addBtn"><i class="fas fa-plus-circle"></i> إضافة سجل</button>
+  </div>
+
+  <div class="toolbar">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <label class="btn-icon" style="cursor:pointer;"><i class="fas fa-file-import"></i> استيراد Excel <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" hidden></label>
+      <div class="export-options">
+        <button class="btn-icon" id="exportMainBtn"><i class="fas fa-file-export"></i> تصدير ▼</button>
+        <div class="export-dropdown">
+          <button id="exportExcelBtn"><i class="fas fa-file-excel"></i> تصدير Excel (.xlsx)</button>
+          <button id="exportCSVBtn"><i class="fas fa-file-csv"></i> تصدير CSV</button>
+          <button id="exportHTMLBtn"><i class="fas fa-code"></i> تصدير HTML</button>
+        </div>
+      </div>
+      <button class="btn-icon clear-storage" id="clearAllBtn"><i class="fas fa-trash-alt"></i> مسح الكل</button>
+    </div>
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input type="text" id="searchInput" placeholder="بحث في جميع الحقول...">
+    </div>
+    <div class="badge-count" id="recordsCount">0 سجل</div>
+  </div>
+
+  <div class="table-wrapper">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>رقم استمارة الاشتراك</th><th>الاسم الأول</th><th>الأب</th><th>الجد</th><th>اللقب</th>
+          <th>الجنس</th><th>رقم الحساب البنكي</th><th>رقم الجوال الرئيسي</th><th>رقم الجوال البديل</th>
+          <th>الوظيفه</th><th>المحافظة</th><th>المديريه</th><th>الرقم الوطني</th>
+          <th>تاريخ الاصدار</th><th>تاريخ الانتهاء</th><th>تاريخ الميلاد</th><th>ملاحظه</th><th>حذف</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="empty-row"><td colspan="18" style="text-align:center;">📋 لا توجد بيانات</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div id="toastMsg" class="toast-msg"><i class="fas fa-info-circle"></i> <span></span></div>
+
+<script>
+  const STORAGE_KEY = 'subscription_system_data';
+  let records = [];
+  let xlsxAvailable = false;
+
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    } catch(e) {
+      console.error('خطأ في الحفظ:', e);
+    }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if(saved) {
+        records = JSON.parse(saved);
+        records = records.map(rec => {
+          if(!rec.id) rec.id = Date.now() + Math.random();
+          return rec;
+        });
+      }
+    } catch(e) {
+      records = [];
+    }
+    renderTable();
+  }
+
+  function showMessage(text, isError = false) {
+    const toast = document.getElementById('toastMsg');
+    toast.querySelector('span').innerText = text;
+    toast.style.display = 'flex';
+    if(isError) {
+      toast.style.background = '#b91c1c';
+      toast.querySelector('i').className = 'fas fa-exclamation-triangle';
+    } else {
+      toast.style.background = '#1f6e43';
+      toast.querySelector('i').className = 'fas fa-check-circle';
+    }
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 2800);
+  }
+
+  function escapeHtml(str) {
+    if(str === undefined || str === null) return '—';
+    return String(str).replace(/[&<>]/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      return m;
+    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+      return c;
+    });
+  }
+
+  let currentFilter = '';
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    let filtered = records;
+    if(currentFilter.trim() !== '') {
+      const term = currentFilter.trim().toLowerCase();
+      filtered = records.filter(rec => {
+        const allValues = Object.values(rec).filter(v => typeof v !== 'number').join(' ').toLowerCase();
+        return allValues.includes(term);
+      });
+    }
+    if(filtered.length === 0) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="18">${currentFilter ? '🔍 لا توجد نتائج' : '📋 لا توجد بيانات'}</td></tr>`;
+      document.getElementById('recordsCount').innerText = `0 سجل`;
+      return;
+    }
+    let html = '';
+    for(let i = 0; i < filtered.length; i++) {
+      const r = filtered[i];
+      html += `<tr>
+        <td>${escapeHtml(r.formNumber)}</td>
+        <td>${escapeHtml(r.firstName)}</td>
+        <td>${escapeHtml(r.fatherName)}</td>
+        <td>${escapeHtml(r.grandName)}</td>
+        <td>${escapeHtml(r.lastName)}</td>
+        <td>${escapeHtml(r.gender)}</td>
+        <td>${escapeHtml(r.bankAccount)}</td>
+        <td>${escapeHtml(r.primaryPhone)}</td>
+        <td>${escapeHtml(r.secondaryPhone)}</td>
+        <td>${escapeHtml(r.job)}</td>
+        <td>${escapeHtml(r.governorate)}</td>
+        <td>${escapeHtml(r.district)}</td>
+        <td>${escapeHtml(r.nationalId)}</td>
+        <td>${escapeHtml(r.issueDate)}</td>
+        <td>${escapeHtml(r.expiryDate)}</td>
+        <td>${escapeHtml(r.birthDate)}</td>
+        <td>${escapeHtml(r.notes)}</td>
+        <td><button class="delete-btn" data-id="${r.id}"><i class="fas fa-trash-alt"></i></button></td>
+      </tr>`;
+    }
+    tbody.innerHTML = html;
+    document.getElementById('recordsCount').innerText = `${filtered.length} سجل`;
+    
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(btn.getAttribute('data-id'));
+        records = records.filter(rec => rec.id !== id);
+        saveToLocalStorage();
+        renderTable();
+        showMessage('تم حذف السجل');
+      });
+    });
+  }
+
+  function addRecordFromForm() {
+    const getVal = (id) => document.getElementById(id).value.trim();
+    
+    const newRecord = {
+      id: Date.now(),
+      formNumber: getVal('formNumber'),
+      firstName: getVal('firstName'),
+      fatherName: getVal('fatherName'),
+      grandName: getVal('grandName'),
+      lastName: getVal('lastName'),
+      gender: getVal('gender'),
+      bankAccount: getVal('bankAccount'),
+      primaryPhone: getVal('primaryPhone'),
+      secondaryPhone: getVal('secondaryPhone'),
+      job: getVal('job'),
+      governorate: getVal('governorate'),
+      district: getVal('district'),
+      nationalId: getVal('nationalId'),
+      issueDate: getVal('issueDate'),
+      expiryDate: getVal('expiryDate'),
+      birthDate: getVal('birthDate'),
+      notes: getVal('notes')
+    };
+    
+    records.push(newRecord);
+    saveToLocalStorage();
+    
+    document.querySelectorAll('.form-grid input, .form-grid select').forEach(field => {
+      if(field.type !== 'select-one') field.value = '';
+      else field.selectedIndex = 0;
+    });
+    
+    renderTable();
+    showMessage('تم الإضافة والحفظ');
+  }
+
+  // ============= دوال التصدير المضمونة (تعمل دائماً) =============
+  
+  // تصدير CSV (يعمل بدون أي مكتبات خارجية)
+  function exportToCSV() {
+    if(records.length === 0) {
+      showMessage('لا توجد بيانات للتصدير', true);
+      return;
+    }
+    
+    const headers = [
+      'رقم استمارة الاشتراك', 'الاسم الأول', 'الأب', 'الجد', 'اللقب',
+      'الجنس', 'رقم الحساب البنكي (كاك بنك)', 'رقم الجوال الرئيسي', 'رقم الجوال البديل',
+      'الوظيفه', 'المحافظة', 'المديريه', 'الرقم الوطني',
+      'تاريخ الاصدار', 'تاريخ الانتهاء', 'تاريخ الميلاد', 'ملاحظه'
+    ];
+    
+    let csvRows = [];
+    csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
+    
+    for(const rec of records) {
+      const row = [
+        rec.formNumber || '', rec.firstName || '', rec.fatherName || '', rec.grandName || '', rec.lastName || '',
+        rec.gender || '', rec.bankAccount || '', rec.primaryPhone || '', rec.secondaryPhone || '',
+        rec.job || '', rec.governorate || '', rec.district || '', rec.nationalId || '',
+        rec.issueDate || '', rec.expiryDate || '', rec.birthDate || '', rec.notes || ''
+      ];
+      csvRows.push(row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','));
+    }
+    
+    const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `بيانات_الاشتراكات_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showMessage(`تم تصدير ${records.length} سجل بصيغة CSV`);
+  }
+  
+  // تصدير HTML (يعمل بدون أي مكتبات)
+  function exportToHTML() {
+    if(records.length === 0) {
+      showMessage('لا توجد بيانات للتصدير', true);
+      return;
+    }
+    
+    let htmlContent = `<!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="UTF-8">
+      <title>بيانات الاشتراكات</title>
+      <style>
+        body { font-family: 'Cairo', sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+        th { background-color: #f2f2f2; }
+      </style>
+    </head>
+    <body>
+      <h2>بيانات الاشتراكات</h2>
+      <p>تاريخ التصدير: ${new Date().toLocaleString('ar')}</p>
+      <p>عدد السجلات: ${records.length}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>رقم استمارة الاشتراك</th><th>الاسم الأول</th><th>الأب</th><th>الجد</th><th>اللقب</th>
+            <th>الجنس</th><th>رقم الحساب البنكي</th><th>رقم الجوال الرئيسي</th><th>رقم الجوال البديل</th>
+            <th>الوظيفه</th><th>المحافظة</th><th>المديريه</th><th>الرقم الوطني</th>
+            <th>تاريخ الاصدار</th><th>تاريخ الانتهاء</th><th>تاريخ الميلاد</th><th>ملاحظه</th>
+          </tr>
+        </thead>
+        <tbody>`;
+    
+    for(const rec of records) {
+      htmlContent += `<tr>
+        <td>${escapeHtml(rec.formNumber)}</td>
+        <td>${escapeHtml(rec.firstName)}</td>
+        <td>${escapeHtml(rec.fatherName)}</td>
+        <td>${escapeHtml(rec.grandName)}</td>
+        <td>${escapeHtml(rec.lastName)}</td>
+        <td>${escapeHtml(rec.gender)}</td>
+        <td>${escapeHtml(rec.bankAccount)}</td>
+        <td>${escapeHtml(rec.primaryPhone)}</td>
+        <td>${escapeHtml(rec.secondaryPhone)}</td>
+        <td>${escapeHtml(rec.job)}</td>
+        <td>${escapeHtml(rec.governorate)}</td>
+        <td>${escapeHtml(rec.district)}</td>
+        <td>${escapeHtml(rec.nationalId)}</td>
+        <td>${escapeHtml(rec.issueDate)}</td>
+        <td>${escapeHtml(rec.expiryDate)}</td>
+        <td>${escapeHtml(rec.birthDate)}</td>
+        <td>${escapeHtml(rec.notes)}</td>
+      </tr>`;
+    }
+    
+    htmlContent += `</tbody></table></body></html>`;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `بيانات_الاشتراكات_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.html`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showMessage(`تم تصدير ${records.length} سجل بصيغة HTML`);
+  }
+  
+  // تصدير Excel باستخدام XLSX (إذا كانت المكتبة متوفرة)
+  function exportToExcel() {
+    if(records.length === 0) {
+      showMessage('لا توجد بيانات للتصدير', true);
+      return;
+    }
+    
+    // محاولة استخدام XLSX إذا كانت متوفرة
+    if(typeof XLSX !== 'undefined' && XLSX && XLSX.utils) {
+      try {
+        const exportData = records.map(rec => ({
+          'رقم استمارة الاشتراك': rec.formNumber || '',
+          'الاسم الأول': rec.firstName || '',
+          'الأب': rec.fatherName || '',
+          'الجد': rec.grandName || '',
+          'اللقب': rec.lastName || '',
+          'الجنس': rec.gender || '',
+          'رقم الحساب البنكي (كاك بنك)': rec.bankAccount || '',
+          'رقم الجوال الرئيسي': rec.primaryPhone || '',
+          'رقم الجوال البديل': rec.secondaryPhone || '',
+          'الوظيفه': rec.job || '',
+          'المحافظة': rec.governorate || '',
+          'المديريه': rec.district || '',
+          'الرقم الوطني': rec.nationalId || '',
+          'تاريخ الاصدار': rec.issueDate || '',
+          'تاريخ الانتهاء': rec.expiryDate || '',
+          'تاريخ الميلاد': rec.birthDate || '',
+          'ملاحظه': rec.notes || ''
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'البيانات');
+        XLSX.writeFile(wb, `بيانات_الاشتراكات_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
+        showMessage(`تم تصدير ${records.length} سجل بصيغة Excel`);
+        return;
+      } catch(e) {
+        console.log('خطأ في تصدير Excel، سيتم استخدام CSV بدلاً من ذلك');
+      }
+    }
+    
+    // إذا فشل Excel، استخدم CSV كبديل
+    showMessage('جاري التصدير بصيغة CSV بديلة...');
+    exportToCSV();
+  }
+
+  function importExcel(file) {
+    if(!file) return;
+    
+    // محاولة استخدام XLSX للاستيراد
+    if(typeof XLSX !== 'undefined' && XLSX && XLSX.read) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const dataArr = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(dataArr, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet);
+          if(!rows.length) {
+            showMessage('الملف فارغ', true);
+            return;
+          }
+          const importedRecords = rows.map((row, idx) => ({
+            id: Date.now() + idx + Math.random(),
+            formNumber: row['رقم استمارة الاشتراك'] || row['رقم الاستمارة'] || '',
+            firstName: row['الاسم الأول'] || row['الاسم الاول'] || '',
+            fatherName: row['الأب'] || row['الاب'] || '',
+            grandName: row['الجد'] || '',
+            lastName: row['اللقب'] || row['اسم العائلة'] || '',
+            gender: row['الجنس'] || '',
+            bankAccount: row['رقم الحساب البنكي (كاك بنك)'] || row['رقم الحساب البنكي'] || '',
+            primaryPhone: row['رقم الجوال الرئيسي'] || row['الجوال الرئيسي'] || '',
+            secondaryPhone: row['رقم الجوال البديل'] || row['الجوال البديل'] || '',
+            job: row['الوظيفه'] || row['الوظيفة'] || '',
+            governorate: row['المحافظة'] || '',
+            district: row['المديريه'] || row['المديرية'] || '',
+            nationalId: row['الرقم الوطني'] || '',
+            issueDate: row['تاريخ الاصدار'] || row['تاريخ الإصدار'] || '',
+            expiryDate: row['تاريخ الانتهاء'] || '',
+            birthDate: row['تاريخ الميلاد'] || '',
+            notes: row['ملاحظه'] || row['ملاحظة'] || ''
+          }));
+          records.push(...importedRecords);
+          saveToLocalStorage();
+          renderTable();
+          showMessage(`تم استيراد ${importedRecords.length} سجل`);
+        } catch(err) {
+          showMessage('خطأ في قراءة الملف', true);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      showMessage('مكتبة Excel غير متوفرة للاستيراد', true);
+    }
+  }
+
+  function clearAllData() {
+    if(records.length === 0) {
+      showMessage('لا توجد بيانات لمسحها', true);
+      return;
+    }
+    if(confirm('⚠️ تحذير: هل أنت متأكد من مسح جميع البيانات؟')) {
+      records = [];
+      saveToLocalStorage();
+      renderTable();
+      showMessage('تم مسح جميع البيانات');
+    }
+  }
+
+  // تهيئة الأحداث
+  document.getElementById('addBtn').addEventListener('click', addRecordFromForm);
+  document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+  document.getElementById('exportCSVBtn').addEventListener('click', exportToCSV);
+  document.getElementById('exportHTMLBtn').addEventListener('click', exportToHTML);
+  document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
+  
+  const fileInput = document.getElementById('excelFileInput');
+  fileInput.addEventListener('change', (e) => {
+    if(e.target.files.length) importExcel(e.target.files[0]);
+    fileInput.value = '';
+  });
+  
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', (e) => {
+    currentFilter = e.target.value;
+    renderTable();
+  });
+  
+  const appDiv = document.querySelector('.app-wrapper');
+  appDiv.addEventListener('dragover', (e) => e.preventDefault());
+  appDiv.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if(file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
+      importExcel(file);
+    } else if(file) showMessage('يرجى إفلات ملف Excel فقط', true);
+  });
+
+  loadFromLocalStorage();
+  showMessage('النظام جاهز - يمكنك التصدير بأي صيغة');
+</script>
+</body>
+</html>
